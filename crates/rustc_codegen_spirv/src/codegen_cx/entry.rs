@@ -6,7 +6,7 @@ use crate::builder_spirv::{SpirvValue, SpirvValueExt};
 use crate::spirv_type::SpirvType;
 use rspirv::dr::Operand;
 use rspirv::spirv::{
-    Capability, Decoration, Dim, ExecutionModel, FunctionControl, StorageClass, Word,
+    BuiltIn, Capability, Decoration, Dim, ExecutionModel, FunctionControl, StorageClass, Word,
 };
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
 use rustc_data_structures::fx::FxHashMap;
@@ -657,6 +657,10 @@ impl<'tcx> CodegenCx<'tcx> {
                 Decoration::BuiltIn,
                 std::iter::once(Operand::BuiltIn(builtin.value)),
             );
+            if let BuiltIn::TessLevelInner | BuiltIn::TessLevelOuter = builtin.value {
+                self.emit_global()
+                    .decorate(var_id.unwrap(), Decoration::Patch, std::iter::empty());
+            }
             decoration_supersedes_location = true;
         }
         if let Some(descriptor_set) = attrs.descriptor_set {
