@@ -453,9 +453,6 @@ impl SpirvBuilder {
     }
 
     pub(crate) fn validate_running_conditions(&mut self) -> Result<(), SpirvBuilderError> {
-        if (self.print_metadata == MetadataPrintout::Full) && self.multimodule {
-            return Err(SpirvBuilderError::MultiModuleWithPrintMetadata);
-        }
         if !self.path_to_crate.is_dir() {
             return Err(SpirvBuilderError::CratePathDoesntExist(std::mem::take(
                 &mut self.path_to_crate,
@@ -487,8 +484,19 @@ impl SpirvBuilder {
                     println!("cargo:rustc-env={}={}", env_var, spirv_module.display());
                 }
             }
-            ModuleResult::MultiModule(_) => {
+            ModuleResult::MultiModule(modules) => {
                 assert!(self.multimodule);
+                let env_var = at.file_name().unwrap().to_str().unwrap();
+                if self.print_metadata == MetadataPrintout::Full {
+                    for (entry_point, spirv_module) in modules {
+                        println!(
+                            "cargo:rustc-env={}[{}]={}",
+                            env_var,
+                            entry_point,
+                            spirv_module.display()
+                        );
+                    }
+                }
             }
         }
         Ok(metadata)
