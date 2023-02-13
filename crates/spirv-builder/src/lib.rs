@@ -468,25 +468,23 @@ impl SpirvBuilder {
         let metadata_contents = File::open(at).map_err(SpirvBuilderError::MetadataFileMissing)?;
         let metadata: CompileResult = serde_json::from_reader(BufReader::new(metadata_contents))
             .map_err(SpirvBuilderError::MetadataFileMalformed)?;
+        let env_var = at
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .strip_suffix(".json")
+            .unwrap();
         match &metadata.module {
             ModuleResult::SingleModule(spirv_module) => {
                 assert!(!self.multimodule);
-                let env_var = format!(
-                    "{}.spv",
-                    at.file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .strip_suffix(".spv.json")
-                        .unwrap()
-                );
                 if self.print_metadata == MetadataPrintout::Full {
                     println!("cargo:rustc-env={}={}", env_var, spirv_module.display());
                 }
             }
             ModuleResult::MultiModule(modules) => {
                 assert!(self.multimodule);
-                let env_var = at.file_name().unwrap().to_str().unwrap();
+
                 if self.print_metadata == MetadataPrintout::Full {
                     for (entry_point, spirv_module) in modules {
                         println!(
