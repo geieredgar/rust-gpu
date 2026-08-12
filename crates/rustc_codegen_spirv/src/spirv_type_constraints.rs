@@ -341,6 +341,24 @@ pub fn instruction_signatures(op: Op) -> Option<&'static [InstSig<'static>]> {
             (Pointer(S, T), _, ../*indices*/) -> Pointer(S, IndexComposite(T))
         },
         Op::ArrayLength | Op::GenericPtrMemSemantics => {}
+
+        // SPV_KHR_untyped_pointers and SPV_EXT_descriptor_heap.
+        //
+        // No constraints, on purpose: the storage class of an untyped pointer is
+        // part of the type and never inferred, so there is nothing here for the
+        // specializer to learn and nothing for it to rewrite.
+        Op::TypeUntypedPointerKHR
+        | Op::UntypedVariableKHR
+        | Op::UntypedAccessChainKHR
+        | Op::UntypedInBoundsAccessChainKHR
+        | Op::UntypedPtrAccessChainKHR
+        | Op::UntypedInBoundsPtrAccessChainKHR
+        | Op::UntypedArrayLengthKHR
+        | Op::TypeBufferEXT
+        | Op::BufferPointerEXT
+        | Op::UntypedImageTexelPointerEXT
+        | Op::ConstantSizeOfEXT => {}
+
         // SPIR-V 1.4
         Op::PtrEqual | Op::PtrNotEqual | Op::PtrDiff => sig! {
             (Pointer(_, T), Pointer(_, T)) -> _

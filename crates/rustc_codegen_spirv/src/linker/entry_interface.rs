@@ -22,8 +22,13 @@ pub fn gather_all_interface_vars_from_uses(module: &mut Module, preserve_binding
     for inst in &module.types_global_values {
         let mut used_vars = IndexSet::new();
 
-        // Base case: the global itself is an interface-relevant `OpVariable`.
-        let interface_relevant_var = inst.class.opcode == Op::Variable && {
+        // Base case: the global itself is an interface-relevant variable.
+        let interface_relevant_var = matches!(
+            inst.class.opcode,
+            // `OpUntypedVariableKHR` declares the descriptor heap built-ins, and
+            // they belong in the interface like any other variable.
+            Op::Variable | Op::UntypedVariableKHR
+        ) && {
             if version > (1, 3) {
                 // SPIR-V >= v1.4 includes all OpVariables in the interface.
                 true

@@ -148,8 +148,8 @@ fn make_dedupe_key(
         if let Some(annos) = annotations.get(&id) {
             data.extend_from_slice(annos);
         }
-        if inst.class.opcode == Op::Variable {
-            // Names only matter for OpVariable.
+        if matches!(inst.class.opcode, Op::Variable | Op::UntypedVariableKHR) {
+            // Names only matter for variables.
             if let Some(name) = names.get(&id) {
                 // Jump through some hoops to shove a String into a Vec<u32>.
                 //

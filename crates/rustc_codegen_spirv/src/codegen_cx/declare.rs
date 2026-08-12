@@ -169,6 +169,16 @@ impl<'tcx> CodegenCx<'tcx> {
         if attrs.buffer_store_intrinsic.is_some() {
             self.buffer_store_intrinsics.borrow_mut().insert(def_id);
         }
+        if attrs.resource_heap_load_intrinsic.is_some() {
+            self.resource_heap_load_intrinsics
+                .borrow_mut()
+                .insert(def_id);
+        }
+        if attrs.sampler_heap_load_intrinsic.is_some() {
+            self.sampler_heap_load_intrinsics
+                .borrow_mut()
+                .insert(def_id);
+        }
 
         // Check for usage of `libm` intrinsics outside of `libm` itself
         if self.tcx.crate_name(def_id.krate) == self.sym.libm && !def_id.is_local() {

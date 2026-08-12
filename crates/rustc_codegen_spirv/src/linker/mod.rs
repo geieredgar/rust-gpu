@@ -2,6 +2,7 @@
 mod test;
 
 pub(crate) mod dce;
+mod descriptor_heap;
 mod destructure_composites;
 mod duplicates;
 mod entry_interface;
@@ -626,6 +627,15 @@ pub fn link(
             })
             .unwrap()
         };
+    }
+
+    // Expand the descriptor heap loads that rode through SPIR-T as custom
+    // instructions, now that there is a SPIR-V module to put the real
+    // `SPV_EXT_descriptor_heap` sequence into (see that module's docs for why it
+    // cannot happen any earlier).
+    {
+        let _timer = sess.timer("expand_descriptor_heap_loads");
+        descriptor_heap::expand_descriptor_heap_loads(&mut output);
     }
 
     // Ensure that no references remain, to our custom "extended instruction set".

@@ -105,6 +105,8 @@ pub enum SpirvAttribute {
     // `fn`/closure attributes:
     BufferLoadIntrinsic,
     BufferStoreIntrinsic,
+    ResourceHeapLoadIntrinsic,
+    SamplerHeapLoadIntrinsic,
 }
 
 // HACK(eddyb) this is similar to `rustc_span::Spanned` but with `value` as the
@@ -142,6 +144,8 @@ pub struct AggregatedSpirvAttributes {
     // `fn`/closure attributes:
     pub buffer_load_intrinsic: Option<Spanned<()>>,
     pub buffer_store_intrinsic: Option<Spanned<()>>,
+    pub resource_heap_load_intrinsic: Option<Spanned<()>>,
+    pub sampler_heap_load_intrinsic: Option<Spanned<()>>,
 }
 
 struct MultipleAttrs {
@@ -254,6 +258,18 @@ impl AggregatedSpirvAttributes {
                 (),
                 span,
                 "#[spirv(buffer_store_intrinsic)]",
+            ),
+            ResourceHeapLoadIntrinsic => try_insert(
+                &mut self.resource_heap_load_intrinsic,
+                (),
+                span,
+                "#[spirv(resource_heap_load_intrinsic)]",
+            ),
+            SamplerHeapLoadIntrinsic => try_insert(
+                &mut self.sampler_heap_load_intrinsic,
+                (),
+                span,
+                "#[spirv(sampler_heap_load_intrinsic)]",
             ),
         }
     }
@@ -377,12 +393,13 @@ impl CheckSpirvAttrVisitor<'_> {
 
                     _ => Err(Expected("function parameter")),
                 },
-                SpirvAttribute::BufferLoadIntrinsic | SpirvAttribute::BufferStoreIntrinsic => {
-                    match target {
-                        Target::Fn => Ok(()),
-                        _ => Err(Expected("function")),
-                    }
-                }
+                SpirvAttribute::BufferLoadIntrinsic
+                | SpirvAttribute::BufferStoreIntrinsic
+                | SpirvAttribute::ResourceHeapLoadIntrinsic
+                | SpirvAttribute::SamplerHeapLoadIntrinsic => match target {
+                    Target::Fn => Ok(()),
+                    _ => Err(Expected("function")),
+                },
             };
             match valid_target {
                 Err(Expected(expected_target)) => {

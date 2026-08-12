@@ -384,6 +384,14 @@ impl Symbols {
                 "vector",
                 SpirvAttribute::IntrinsicType(IntrinsicType::Vector),
             ),
+            (
+                "resource_heap_load_intrinsic",
+                SpirvAttribute::ResourceHeapLoadIntrinsic,
+            ),
+            (
+                "sampler_heap_load_intrinsic",
+                SpirvAttribute::SamplerHeapLoadIntrinsic,
+            ),
             ("buffer_load_intrinsic", SpirvAttribute::BufferLoadIntrinsic),
             (
                 "buffer_store_intrinsic",

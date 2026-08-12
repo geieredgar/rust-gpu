@@ -2296,6 +2296,17 @@ impl<'a, S: Specialization> Expander<'a, S> {
 
             for interface_operand in &mut inst.operands[3..] {
                 let interface_id = interface_operand.unwrap_id_ref();
+
+                // An interface variable that was never "generic" keeps its ID:
+                // there is nothing to instantiate. Every `OpVariable` is generic
+                // (its pointer type starts out `StorageClass::Generic`, see
+                // `SpirvType::Pointer`), but an `OpUntypedVariableKHR` — how the
+                // descriptor heap built-ins are declared — has its storage class
+                // in its type already, and so is left alone by the specializer.
+                if !self.specializer.generics.contains_key(&interface_id) {
+                    continue;
+                }
+
                 let mut instances = self.all_instances_of(interface_id);
                 match (instances.next(), instances.next()) {
                     (None, _) => unreachable!(

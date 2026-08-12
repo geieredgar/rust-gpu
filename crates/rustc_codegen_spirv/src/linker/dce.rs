@@ -63,6 +63,22 @@ fn spread_roots(module: &Module, rooted: &mut FxIndexSet<Word>) -> bool {
             any |= root(inst, rooted);
         }
     }
+    // A decoration whose target survives keeps its own operands alive, which
+    // matters for the `Id` decorations: `OpDecorateId %array ArrayStrideIdEXT
+    // %size` is the only thing referring to the `OpConstantSizeOfEXT` that a
+    // descriptor heap array is strided by, and `kill_unrooted` keeps a decoration
+    // as soon as its target is rooted — so without this, the module would end up
+    // with a decoration pointing at a deleted constant.
+    for inst in &module.annotations {
+        let mut operands = inst.operands.iter().filter_map(|op| op.id_ref_any());
+        if let Some(target) = operands.next()
+            && rooted.contains(&target)
+        {
+            for id in operands {
+                any |= rooted.insert(id);
+            }
+        }
+    }
     for func in &module.functions {
         if rooted.contains(&func.def_id().unwrap()) {
             // NB (Mobius 2021) - since later insts are much more likely to reference

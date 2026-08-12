@@ -546,9 +546,66 @@ fn create_archive(files: &[&Path], metadata: &[u8], out_filename: &Path) {
 pub fn with_rspirv_loader<E>(
     f: impl FnOnce(&mut dyn rspirv::binary::Consumer) -> Result<(), E>,
 ) -> Result<rspirv::dr::Module, E> {
-    let mut loader = rspirv::dr::Loader::new();
+    let mut loader = UntypedVariableLoader::default();
     f(&mut loader)?;
-    Ok(loader.module())
+    Ok(loader.into_module())
+}
+
+/// `rspirv::dr::Loader`, plus the module-scoped `OpUntypedVariableKHR`s it drops.
+///
+/// `rspirv` 0.13 decides which section an instruction belongs to with a `match`
+/// that names `OpVariable` specifically, so a module-scoped
+/// `OpUntypedVariableKHR` — which the descriptor heap built-ins are declared with
+/// — is rejected as a "detached instruction" instead of landing in
+/// `types_global_values`. They are collected here and appended afterwards, which
+/// is sound because a variable can only be referenced from a function body, never
+/// from another global.
+#[derive(Default)]
+struct UntypedVariableLoader {
+    loader: rspirv::dr::Loader,
+    /// Tracked here because the loader's own idea of it is private.
+    in_function: bool,
+    module_scoped_untyped_variables: Vec<rspirv::dr::Instruction>,
+}
+
+impl UntypedVariableLoader {
+    fn into_module(self) -> rspirv::dr::Module {
+        let mut module = self.loader.module();
+        module
+            .types_global_values
+            .extend(self.module_scoped_untyped_variables);
+        module
+    }
+}
+
+impl rspirv::binary::Consumer for UntypedVariableLoader {
+    fn initialize(&mut self) -> rspirv::binary::ParseAction {
+        self.loader.initialize()
+    }
+
+    fn finalize(&mut self) -> rspirv::binary::ParseAction {
+        self.loader.finalize()
+    }
+
+    fn consume_header(&mut self, header: rspirv::dr::ModuleHeader) -> rspirv::binary::ParseAction {
+        self.loader.consume_header(header)
+    }
+
+    fn consume_instruction(
+        &mut self,
+        inst: rspirv::dr::Instruction,
+    ) -> rspirv::binary::ParseAction {
+        match inst.class.opcode {
+            rspirv::spirv::Op::Function => self.in_function = true,
+            rspirv::spirv::Op::FunctionEnd => self.in_function = false,
+            rspirv::spirv::Op::UntypedVariableKHR if !self.in_function => {
+                self.module_scoped_untyped_variables.push(inst);
+                return rspirv::binary::ParseAction::Continue;
+            }
+            _ => {}
+        }
+        self.loader.consume_instruction(inst)
+    }
 }
 
 /// This is the actual guts of linking: the rest of the link-related functions are just digging through rustc's

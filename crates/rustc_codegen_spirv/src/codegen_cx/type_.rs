@@ -210,6 +210,8 @@ impl BaseTypeCodegenMethods for CodegenCx<'_> {
             | SpirvType::AccelerationStructureKhr
             | SpirvType::RayQueryKhr
             | SpirvType::CooperativeMatrixKhr { .. }
+            // A descriptor heap is a handle to the implementation's descriptor
+            // storage, and a heap array only ever names a type, never a value.
                 => TypeKind::Token,
         }
     }

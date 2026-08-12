@@ -166,7 +166,7 @@ pub fn name_variables_pass(module: &mut Module) {
     let variables = module
         .types_global_values
         .iter()
-        .filter(|inst| inst.class.opcode == Op::Variable)
+        .filter(|inst| matches!(inst.class.opcode, Op::Variable | Op::UntypedVariableKHR))
         .map(|inst| inst.result_id.unwrap())
         .collect::<FxHashSet<Word>>();
     module

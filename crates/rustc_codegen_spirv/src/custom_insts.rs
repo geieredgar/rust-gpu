@@ -199,6 +199,52 @@ def_custom_insts! {
     // invocation (format string followed by inputs) for the "message", while
     // `kind` only distinguishes broad categories like `"abort"` vs `"panic"`.
     4 => Abort { kind, ..message_debug_printf },
+
+    // [Semantic] Loads a descriptor out of one of the descriptor heaps (see
+    // `SPV_EXT_descriptor_heap`), with the result type being the descriptor type
+    // (e.g. `OpTypeImage`).
+    //
+    // A custom instruction, rather than the `OpUntypedAccessChainKHR` + `OpLoad`
+    // pair it becomes, because SPIR-T cannot represent either half: the access
+    // chain takes a *type* as an operand (its "Base Type"), and so does the
+    // `OpConstantSizeOfEXT` that the heap array's `ArrayStrideIdEXT` needs, while
+    // `Attr::SpvAnnotation` carries no IDs at all. Keeping the whole sequence in
+    // one opaque `OpExtInst` lets it ride through the SPIR-T round-trip, and
+    // `linker::descriptor_heap` expands it right after lifting back to SPIR-V.
+    //
+    // `heap` is a `u32` constant (see `DescriptorHeap`), not a literal, because
+    // SPIR-T models `OpExtInst` operands as values.
+    5 => DescriptorHeapLoad { heap, index },
+}
+
+/// Which descriptor heap a `CustomInst::DescriptorHeapLoad` reads from.
+///
+/// Encoded as the value of the `heap` operand's `u32` constant.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[repr(u32)]
+pub enum DescriptorHeap {
+    /// `BuiltIn ResourceHeapEXT`: images, sampled images, acceleration structures.
+    Resource = 0,
+    /// `BuiltIn SamplerHeapEXT`.
+    Sampler = 1,
+}
+
+impl DescriptorHeap {
+    pub fn decode(encoded: u32) -> Option<Self> {
+        match encoded {
+            0 => Some(Self::Resource),
+            1 => Some(Self::Sampler),
+            _ => None,
+        }
+    }
+
+    /// The built-in decorating this heap's variable.
+    pub fn built_in(self) -> rspirv::spirv::BuiltIn {
+        match self {
+            Self::Resource => rspirv::spirv::BuiltIn::ResourceHeapEXT,
+            Self::Sampler => rspirv::spirv::BuiltIn::SamplerHeapEXT,
+        }
+    }
 }
 
 impl CustomOp {
@@ -211,7 +257,7 @@ impl CustomOp {
             | CustomOp::PushInlinedCallFrame
             | CustomOp::PopInlinedCallFrame => true,
 
-            CustomOp::Abort => false,
+            CustomOp::Abort | CustomOp::DescriptorHeapLoad => false,
         }
     }
 
@@ -223,7 +269,8 @@ impl CustomOp {
             CustomOp::SetDebugSrcLoc
             | CustomOp::ClearDebugSrcLoc
             | CustomOp::PushInlinedCallFrame
-            | CustomOp::PopInlinedCallFrame => false,
+            | CustomOp::PopInlinedCallFrame
+            | CustomOp::DescriptorHeapLoad => false,
 
             CustomOp::Abort => true,
         }

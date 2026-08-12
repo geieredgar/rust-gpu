@@ -112,6 +112,9 @@ pub struct CodegenCx<'tcx> {
     pub buffer_load_intrinsics: RefCell<FxHashSet<DefId>>,
     /// Intrinsic for storing a `<T>` into a `&[u32]`. The `PassMode` is the mode of the `<T>`.
     pub buffer_store_intrinsics: RefCell<FxHashSet<DefId>>,
+    /// Intrinsics for loading a descriptor out of either descriptor heap.
+    pub resource_heap_load_intrinsics: RefCell<FxHashSet<DefId>>,
+    pub sampler_heap_load_intrinsics: RefCell<FxHashSet<DefId>>,
 
     /// Maps `DefId`s of `From::from` method implementations to their source and target types.
     /// Used to optimize constant conversions like `u32::from(42u8)` to avoid creating the source type.
@@ -248,6 +251,8 @@ impl<'tcx> CodegenCx<'tcx> {
             fmt_rt_arg_new_fn_ids_to_ty_and_spec: Default::default(),
             buffer_load_intrinsics: Default::default(),
             buffer_store_intrinsics: Default::default(),
+            resource_heap_load_intrinsics: Default::default(),
+            sampler_heap_load_intrinsics: Default::default(),
             from_trait_impls: Default::default(),
             i8_i16_atomics_allowed: false,
             codegen_args,

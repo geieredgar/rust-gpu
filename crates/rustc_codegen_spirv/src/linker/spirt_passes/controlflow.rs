@@ -335,7 +335,8 @@ pub fn convert_custom_aborts_to_unstructured_returns_in_entry_points(
                                         current_debug_src_loc = callsite_debug_src_loc;
                                     }
                                 }
-                                CustomInst::Abort { .. } => {}
+                                CustomInst::Abort { .. }
+                                | CustomInst::DescriptorHeapLoad { .. } => {}
                             }
                         }
 

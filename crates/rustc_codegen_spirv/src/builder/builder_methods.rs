@@ -3394,6 +3394,19 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
             .is_some_and(|def_id| self.buffer_load_intrinsics.borrow().contains(&def_id));
         let buffer_store_intrinsic = instance_def_id
             .is_some_and(|def_id| self.buffer_store_intrinsics.borrow().contains(&def_id));
+        let heap_load_intrinsic = instance_def_id.and_then(|def_id| {
+            if self
+                .resource_heap_load_intrinsics
+                .borrow()
+                .contains(&def_id)
+            {
+                Some(crate::custom_insts::DescriptorHeap::Resource)
+            } else if self.sampler_heap_load_intrinsics.borrow().contains(&def_id) {
+                Some(crate::custom_insts::DescriptorHeap::Sampler)
+            } else {
+                None
+            }
+        });
         let is_panic_entry_point = instance_def_id
             .is_some_and(|def_id| self.panic_entry_points.borrow().contains(&def_id));
         let from_trait_impl =
@@ -3422,6 +3435,9 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
         }
         if buffer_load_intrinsic {
             return self.codegen_buffer_load_intrinsic(fn_abi, result_type, args);
+        }
+        if let Some(heap) = heap_load_intrinsic {
+            return self.codegen_descriptor_heap_load_intrinsic(heap, result_type, args);
         }
         if buffer_store_intrinsic {
             self.codegen_buffer_store_intrinsic(fn_abi, args);

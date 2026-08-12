@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added ⭐
+
+- added descriptor heaps from
+  [`SPV_EXT_descriptor_heap`](https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_descriptor_heap.html):
+  `spirv_std::descriptor_heap::{ResourceHeap, SamplerHeap}` yield descriptors by
+  index — `let image: Image2d = unsafe { ResourceHeap::get(i) };` — from anywhere
+  in a shader, with no `descriptor_set`/`binding` and nothing in the entry point's
+  signature, since the heaps are per-device rather than per-draw. The
+  `DescriptorHeapEXT` capability and the `OpExtension` are declared automatically
+  when a heap is used.
+
+  Every layer of the toolchain carries its own copy of the SPIR-V grammar, and
+  all of them have to know the extension, so `spirt` and `spirv-tools` are now
+  taken from forks with their Khronos submodules at `vulkan-sdk-1.4.357.0`:
+
+  - `spirt`: bumped `SPIRV-Headers`, taught its grammar deserializer the newer
+    `aliases`/`provisional` fields, and widened what the newer grammar overflowed
+    (operand-kind packing, optional-operand capacity, ext-inst versions).
+  - `spirv-tools`: bumped `SPIRV-Tools`/`SPIRV-Headers` and regenerated the
+    grammar tables, without which `spirv-val` rejects `DescriptorHeapEXT`.
+
 ### Changed 🛠
 
 - [PR#637](https://github.com/Rust-GPU/rust-gpu/pull/637) upgraded `bitflags` dependency from 1.x to 2.x
