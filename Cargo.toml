@@ -59,7 +59,16 @@ spirv-builder = { path = "./crates/spirv-builder", version = "=0.10.0-alpha.1", 
 spirv-std = { path = "./crates/spirv-std", version = "=0.10.0-alpha.1" }
 spirv-std-types = { path = "./crates/spirv-std/shared", version = "=0.10.0-alpha.1" }
 spirv-std-macros = { path = "./crates/spirv-std/macros", version = "=0.10.0-alpha.1" }
-spirv-tools = { version = "0.13.0", default-features = false }
+# Forked to carry SPIRV-Tools/SPIRV-Headers new enough to know
+# `SPV_EXT_descriptor_heap`, which the bundled 0.13.3 does not: without it
+# `spirv-val` rejects every module that uses a descriptor heap.
+#
+# A path dependency, so the local checkout is what builds. Once the fork is
+# pushed this should become
+# `git = "https://github.com/geieredgar/spirv-tools-rs.git"`, which is what
+# anything consuming rust-gpu *from git* (e.g. jaya, via `cargo-gpu-install`)
+# needs in order to resolve it at all.
+spirv-tools = { path = "../spirv-tools-rs/spirv-tools", default-features = false }
 rustc_codegen_spirv = { path = "./crates/rustc_codegen_spirv", version = "=0.10.0-alpha.1", default-features = false }
 rustc_codegen_spirv-types = { path = "./crates/rustc_codegen_spirv-types", version = "=0.10.0-alpha.1" }
 cargo-gpu-install = { path = "./crates/cargo-gpu-install", version = "=0.10.0-alpha.1" }

@@ -3608,8 +3608,6 @@ dependencies = [
 [[package]]
 name = "spirt"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2d5968bd2a36466468aac637b355776f080edfb0c6f769b2b99b9708260c42a"
 dependencies = [
  "arrayvec",
  "bytemuck",
@@ -3687,8 +3685,6 @@ version = "0.10.0-alpha.1"
 [[package]]
 name = "spirv-tools"
 version = "0.13.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43bbd243a64a3ac7f87f8f026977285fc578698627337bd65a309576e89ad00f"
 dependencies = [
  "memchr",
  "spirv-tools-sys",
@@ -3698,8 +3694,6 @@ dependencies = [
 [[package]]
 name = "spirv-tools-sys"
 version = "0.13.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dbb2c54a9c790946820dd59163c63155e00204e0cbdc4d18374bee4d868ae66"
 dependencies = [
  "cc",
 ]

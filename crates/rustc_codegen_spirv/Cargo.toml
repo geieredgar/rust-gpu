@@ -55,7 +55,12 @@ spirv-std-types = { workspace = true, features = ["std"] }
 rustc-demangle = "0.1.21"
 sanitize-filename = "0.6.0"
 smallvec = { version = "1.6.1", features = ["const_generics", "const_new", "union"] }
-spirt = "0.4.0"
+# Forked to bump its vendored `SPIRV-Headers` to one that knows
+# `SPV_EXT_descriptor_heap`; 0.4.0's copy predates the extension, so lowering a
+# module that uses a descriptor heap fails with "unsupported Capability value
+# 5128". See the note on `spirv-tools` in the workspace manifest about switching
+# to a git dependency.
+spirt = { path = "../../../spirt" }
 spirv-tools.workspace = true
 lazy_static = "1.4.0"
 itertools = "0.14.0"
