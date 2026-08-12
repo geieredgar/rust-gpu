@@ -3608,6 +3608,7 @@ dependencies = [
 [[package]]
 name = "spirt"
 version = "0.4.0"
+source = "git+https://github.com/geieredgar/spirt.git?branch=descriptor-heap#0dd1d030a1a270f8662a4b2db320945d1b4ce895"
 dependencies = [
  "arrayvec",
  "bytemuck",
@@ -3685,6 +3686,7 @@ version = "0.10.0-alpha.1"
 [[package]]
 name = "spirv-tools"
 version = "0.13.3"
+source = "git+https://github.com/geieredgar/spirv-tools-rs.git?branch=descriptor-heap#c56190ac1a2be31ddd14db06a69d2b244a17d3a2"
 dependencies = [
  "memchr",
  "spirv-tools-sys",
@@ -3694,6 +3696,7 @@ dependencies = [
 [[package]]
 name = "spirv-tools-sys"
 version = "0.13.3"
+source = "git+https://github.com/geieredgar/spirv-tools-rs.git?branch=descriptor-heap#c56190ac1a2be31ddd14db06a69d2b244a17d3a2"
 dependencies = [
  "cc",
 ]
