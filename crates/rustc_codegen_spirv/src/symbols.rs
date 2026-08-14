@@ -396,6 +396,10 @@ impl Symbols {
                 "physical_storage_buffer_load_intrinsic",
                 SpirvAttribute::PhysicalStorageBufferLoadIntrinsic,
             ),
+            (
+                "physical_storage_buffer_store_intrinsic",
+                SpirvAttribute::PhysicalStorageBufferStoreIntrinsic,
+            ),
             ("buffer_load_intrinsic", SpirvAttribute::BufferLoadIntrinsic),
             (
                 "buffer_store_intrinsic",

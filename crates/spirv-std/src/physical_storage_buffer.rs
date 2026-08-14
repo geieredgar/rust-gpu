@@ -1,8 +1,9 @@
-//! Reads through raw device addresses, from `SPV_KHR_physical_storage_buffer`.
+//! Reads and writes through raw device addresses, from
+//! `SPV_KHR_physical_storage_buffer`.
 //!
 //! A buffer reached this way is not a descriptor and is not bound to anything:
 //! the shader is handed a 64-bit address — usually through push data — and reads
-//! the memory at it. That is the whole interface.
+//! or writes the memory at it. That is the whole interface.
 //!
 //! ```no_run
 //! # #![cfg_attr(target_arch = "spirv", no_std)]
@@ -70,6 +71,24 @@ unsafe fn physical_storage_buffer_load_intrinsic<T>(address: u64) -> T {
     // exists so that a failure to do so is loud rather than silent.
     unsafe {
         let _ = address;
+        core::hint::unreachable_unchecked()
+    }
+}
+
+/// Stores a `T` to a device address.
+///
+/// `rustc_codegen_spirv` replaces calls to this with a custom instruction, which
+/// its linker expands into an `OpConvertUToPtr` to a `PhysicalStorageBuffer`
+/// pointer followed by an `OpStore` carrying an `Aligned` memory operand.
+#[spirv(physical_storage_buffer_store_intrinsic)]
+// Inlining this would dissolve the call the codegen looks for.
+#[inline(never)]
+#[spirv_std_macros::gpu_only]
+unsafe fn physical_storage_buffer_store_intrinsic<T>(address: u64, value: T) {
+    // Not reachable on the GPU: the codegen replaces every call to this. The body
+    // exists so that a failure to do so is loud rather than silent.
+    unsafe {
+        let _ = (address, value);
         core::hint::unreachable_unchecked()
     }
 }
@@ -155,5 +174,31 @@ impl<T> DevicePtr<T> {
     #[inline]
     pub unsafe fn index(self, index: usize) -> T {
         unsafe { self.add(index).read() }
+    }
+
+    /// Writes `value` to this address.
+    ///
+    /// # Safety
+    ///
+    /// The address must name live, writable memory laid out as `T` and aligned
+    /// to at least `align_of::<T>()` — see the module docs. Nothing here checks
+    /// any of it.
+    ///
+    /// Two invocations writing the same address race like any other GPU write:
+    /// this carries no synchronization of its own, and a read of what another
+    /// invocation wrote needs a barrier between the two.
+    #[inline]
+    pub unsafe fn write(self, value: T) {
+        unsafe { physical_storage_buffer_store_intrinsic(self.address, value) }
+    }
+
+    /// Writes `value` `index` elements along, as indexing an array would.
+    ///
+    /// # Safety
+    ///
+    /// As [`DevicePtr::write`], for the element at `index`.
+    #[inline]
+    pub unsafe fn write_index(self, index: usize, value: T) {
+        unsafe { self.add(index).write(value) }
     }
 }

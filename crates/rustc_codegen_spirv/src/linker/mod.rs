@@ -639,15 +639,15 @@ pub fn link(
         descriptor_heap::expand_descriptor_heap_loads(&mut output);
     }
 
-    // Likewise for loads through a raw device address, which cannot exist any
+    // Likewise for accesses through a raw device address, which cannot exist any
     // earlier for a reason of the same shape: the `Logical` addressing model is
     // assumed everywhere above this point (see that module's docs).
     //
     // After the heap pass, so that whichever of the two expands last is the one
     // that finds the custom instruction set unused and drops the import.
     {
-        let _timer = sess.timer("expand_physical_storage_buffer_loads");
-        physical_storage_buffer::expand_physical_storage_buffer_loads(&mut output);
+        let _timer = sess.timer("expand_physical_storage_buffer_accesses");
+        physical_storage_buffer::expand_physical_storage_buffer_accesses(&mut output);
     }
 
     // Ensure that no references remain, to our custom "extended instruction set".

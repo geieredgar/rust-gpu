@@ -184,6 +184,11 @@ impl<'tcx> CodegenCx<'tcx> {
                 .borrow_mut()
                 .insert(def_id);
         }
+        if attrs.physical_storage_buffer_store_intrinsic.is_some() {
+            self.physical_storage_buffer_store_intrinsics
+                .borrow_mut()
+                .insert(def_id);
+        }
 
         // Check for usage of `libm` intrinsics outside of `libm` itself
         if self.tcx.crate_name(def_id.krate) == self.sym.libm && !def_id.is_local() {

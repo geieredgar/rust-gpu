@@ -234,6 +234,15 @@ def_custom_insts! {
     // `OpExtInst` operands as values. It becomes the `Aligned` memory operand,
     // which Vulkan requires on every access through a physical pointer.
     6 => PhysicalStorageBufferLoad { address, alignment },
+
+    // [Semantic] Stores a value into memory named by a raw 64-bit device
+    // address, the counterpart of `PhysicalStorageBufferLoad`.
+    //
+    // Unlike the load, this carries no result type — an `OpStore` produces
+    // nothing — so the pointee type is the type of `value`, which the linker
+    // looks up rather than being told. That is the only structural difference
+    // between the two.
+    7 => PhysicalStorageBufferStore { address, alignment, value },
 }
 
 /// Which descriptor heap a `CustomInst::DescriptorHeapLoad` reads from.
@@ -278,7 +287,8 @@ impl CustomOp {
 
             CustomOp::Abort
             | CustomOp::DescriptorHeapLoad
-            | CustomOp::PhysicalStorageBufferLoad => false,
+            | CustomOp::PhysicalStorageBufferLoad
+            | CustomOp::PhysicalStorageBufferStore => false,
         }
     }
 
@@ -292,7 +302,8 @@ impl CustomOp {
             | CustomOp::PushInlinedCallFrame
             | CustomOp::PopInlinedCallFrame
             | CustomOp::DescriptorHeapLoad
-            | CustomOp::PhysicalStorageBufferLoad => false,
+            | CustomOp::PhysicalStorageBufferLoad
+            | CustomOp::PhysicalStorageBufferStore => false,
 
             CustomOp::Abort => true,
         }

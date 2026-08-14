@@ -116,6 +116,7 @@ pub struct CodegenCx<'tcx> {
     pub resource_heap_load_intrinsics: RefCell<FxHashSet<DefId>>,
     pub sampler_heap_load_intrinsics: RefCell<FxHashSet<DefId>>,
     pub physical_storage_buffer_load_intrinsics: RefCell<FxHashSet<DefId>>,
+    pub physical_storage_buffer_store_intrinsics: RefCell<FxHashSet<DefId>>,
 
     /// Maps `DefId`s of `From::from` method implementations to their source and target types.
     /// Used to optimize constant conversions like `u32::from(42u8)` to avoid creating the source type.
@@ -255,6 +256,7 @@ impl<'tcx> CodegenCx<'tcx> {
             resource_heap_load_intrinsics: Default::default(),
             sampler_heap_load_intrinsics: Default::default(),
             physical_storage_buffer_load_intrinsics: Default::default(),
+            physical_storage_buffer_store_intrinsics: Default::default(),
             from_trait_impls: Default::default(),
             i8_i16_atomics_allowed: false,
             codegen_args,

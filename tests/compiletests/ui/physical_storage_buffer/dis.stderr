@@ -1,12 +1,15 @@
           %1 = OpFunction %2 None %3
           %4 = OpLabel
-               OpLine %5 19 12
+               OpLine %5 28 12
           %6 = OpLoad %7 %8
-               OpLine %9 147 17
+               OpLine %9 166 17
          %10 = OpConvertUToPtr %11 %6
          %12 = OpLoad %13 %10 Aligned 4
-               OpLine %5 22 4
-               OpStore %14 %12
+               OpLine %9 192 17
+         %14 = OpConvertUToPtr %11 %6
+               OpStore %14 %12 Aligned 4
+               OpLine %5 33 4
+               OpStore %15 %12
                OpNoLine
                OpReturn
                OpFunctionEnd

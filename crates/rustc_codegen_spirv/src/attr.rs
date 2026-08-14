@@ -108,6 +108,7 @@ pub enum SpirvAttribute {
     ResourceHeapLoadIntrinsic,
     SamplerHeapLoadIntrinsic,
     PhysicalStorageBufferLoadIntrinsic,
+    PhysicalStorageBufferStoreIntrinsic,
 }
 
 // HACK(eddyb) this is similar to `rustc_span::Spanned` but with `value` as the
@@ -148,6 +149,7 @@ pub struct AggregatedSpirvAttributes {
     pub resource_heap_load_intrinsic: Option<Spanned<()>>,
     pub sampler_heap_load_intrinsic: Option<Spanned<()>>,
     pub physical_storage_buffer_load_intrinsic: Option<Spanned<()>>,
+    pub physical_storage_buffer_store_intrinsic: Option<Spanned<()>>,
 }
 
 struct MultipleAttrs {
@@ -279,6 +281,12 @@ impl AggregatedSpirvAttributes {
                 span,
                 "#[spirv(physical_storage_buffer_load_intrinsic)]",
             ),
+            PhysicalStorageBufferStoreIntrinsic => try_insert(
+                &mut self.physical_storage_buffer_store_intrinsic,
+                (),
+                span,
+                "#[spirv(physical_storage_buffer_store_intrinsic)]",
+            ),
         }
     }
 }
@@ -405,7 +413,8 @@ impl CheckSpirvAttrVisitor<'_> {
                 | SpirvAttribute::BufferStoreIntrinsic
                 | SpirvAttribute::ResourceHeapLoadIntrinsic
                 | SpirvAttribute::SamplerHeapLoadIntrinsic
-                | SpirvAttribute::PhysicalStorageBufferLoadIntrinsic => match target {
+                | SpirvAttribute::PhysicalStorageBufferLoadIntrinsic
+                | SpirvAttribute::PhysicalStorageBufferStoreIntrinsic => match target {
                     Target::Fn => Ok(()),
                     _ => Err(Expected("function")),
                 },

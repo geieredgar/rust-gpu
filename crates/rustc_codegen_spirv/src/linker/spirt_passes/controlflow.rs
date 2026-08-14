@@ -337,7 +337,8 @@ pub fn convert_custom_aborts_to_unstructured_returns_in_entry_points(
                                 }
                                 CustomInst::Abort { .. }
                                 | CustomInst::DescriptorHeapLoad { .. }
-                                | CustomInst::PhysicalStorageBufferLoad { .. } => {}
+                                | CustomInst::PhysicalStorageBufferLoad { .. }
+                                | CustomInst::PhysicalStorageBufferStore { .. } => {}
                             }
                         }
 

@@ -3412,6 +3412,11 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
                 .borrow()
                 .contains(&def_id)
         });
+        let physical_storage_buffer_store_intrinsic = instance_def_id.is_some_and(|def_id| {
+            self.physical_storage_buffer_store_intrinsics
+                .borrow()
+                .contains(&def_id)
+        });
         let is_panic_entry_point = instance_def_id
             .is_some_and(|def_id| self.panic_entry_points.borrow().contains(&def_id));
         let from_trait_impl =
@@ -3446,6 +3451,14 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
         }
         if physical_storage_buffer_load_intrinsic {
             return self.codegen_physical_storage_buffer_load_intrinsic(result_type, args);
+        }
+        if physical_storage_buffer_store_intrinsic {
+            self.codegen_physical_storage_buffer_store_intrinsic(args);
+            let void_ty = SpirvType::Void.def(rustc_span::DUMMY_SP, self);
+            return SpirvValue {
+                kind: SpirvValueKind::IllegalTypeUsed(void_ty),
+                ty: void_ty,
+            };
         }
         if buffer_store_intrinsic {
             self.codegen_buffer_store_intrinsic(fn_abi, args);

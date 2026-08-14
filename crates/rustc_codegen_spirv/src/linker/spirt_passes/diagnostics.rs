@@ -686,7 +686,8 @@ impl<'a> Visitor<'a> for DiagnosticReporter<'a> {
                             }
                             CustomInst::Abort { .. }
                             | CustomInst::DescriptorHeapLoad { .. }
-                            | CustomInst::PhysicalStorageBufferLoad { .. } => {}
+                            | CustomInst::PhysicalStorageBufferLoad { .. }
+                            | CustomInst::PhysicalStorageBufferStore { .. } => {}
                         },
                     }
                 }

@@ -863,7 +863,8 @@ impl Inliner<'_, '_> {
                                 }
                                 CustomOp::Abort
                                 | CustomOp::DescriptorHeapLoad
-                                | CustomOp::PhysicalStorageBufferLoad => break,
+                                | CustomOp::PhysicalStorageBufferLoad
+                                | CustomOp::PhysicalStorageBufferStore => break,
                             }
                         }
                         Op::Variable => {}
@@ -1113,7 +1114,8 @@ impl Inliner<'_, '_> {
                         }
                         CustomOp::Abort
                         | CustomOp::DescriptorHeapLoad
-                        | CustomOp::PhysicalStorageBufferLoad => break,
+                        | CustomOp::PhysicalStorageBufferLoad
+                        | CustomOp::PhysicalStorageBufferStore => break,
                     }
                 }
                 Op::Variable => continue,

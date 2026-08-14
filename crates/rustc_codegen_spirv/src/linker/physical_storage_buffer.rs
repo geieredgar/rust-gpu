@@ -1,4 +1,4 @@
-//! Expands `CustomInst::PhysicalStorageBufferLoad` into
+//! Expands `CustomInst::PhysicalStorageBuffer{Load,Store}` into
 //! `SPV_KHR_physical_storage_buffer`.
 //!
 //! This runs *after* `spirt::spv::lift`, on the SPIR-V the SPIR-T pipeline
@@ -12,6 +12,9 @@
 //! ```spirv
 //! %ptr = OpConvertUToPtr %ptr_type %address
 //! %value = OpLoad %type %ptr Aligned <alignment>
+//! ; or
+//! %ptr = OpConvertUToPtr %ptr_type %address
+//!        OpStore %ptr %value Aligned <alignment>
 //! ```
 //!
 //! with the pointer types, the capability and the module's addressing model all
@@ -22,31 +25,34 @@ use rspirv::dr::{Block, Instruction, Module, Operand};
 use rspirv::spirv::{AddressingModel, Capability, MemoryAccess, Op, StorageClass, Word};
 use rustc_data_structures::fx::FxHashMap;
 
-/// One physical load found in a function body.
-struct Load {
-    /// The `OpExtInst`'s own result ID, which the `OpLoad` inherits so that
-    /// everything already referring to it keeps working.
+/// One physical access found in a function body.
+struct Access {
+    /// The `OpExtInst`'s own result ID. A load's `OpLoad` inherits it, so that
+    /// everything already referring to it keeps working; a store's is dropped,
+    /// since `OpStore` produces nothing and nothing may have used it.
     result_id: Word,
-    /// The type being loaded.
-    loaded_type: Word,
+    /// The type moved through the pointer, which is what the pointer points at.
+    pointee_type: Word,
     address_id: Word,
     /// The `Aligned` memory operand, in bytes.
     alignment: u32,
+    /// The value, for a store; `None` for a load.
+    value_id: Option<Word>,
 }
 
 /// Everything synthesized for a module, created on first use.
 struct Pointers {
     /// `OpTypePointer PhysicalStorageBuffer` per pointee type.
     types: FxHashMap<Word, Word>,
-    /// The fresh ID of the `OpConvertUToPtr` feeding each load, keyed by the
-    /// load's own result ID (which the `OpLoad` keeps).
+    /// The fresh ID of the `OpConvertUToPtr` feeding each access, keyed by the
+    /// access's own result ID.
     convert_ids: FxHashMap<Word, Word>,
 }
 
-/// Replaces every `CustomInst::PhysicalStorageBufferLoad` with the real thing.
+/// Replaces every physical-storage-buffer custom instruction with the real thing.
 ///
 /// Does nothing to a module that has none, which is all but a few.
-pub fn expand_physical_storage_buffer_loads(module: &mut Module) {
+pub fn expand_physical_storage_buffer_accesses(module: &mut Module) {
     let Some(custom_ext_inst_set) = module
         .ext_inst_imports
         .iter()
@@ -60,22 +66,27 @@ pub fn expand_physical_storage_buffer_loads(module: &mut Module) {
         return;
     };
 
+    // A store names no type of its own — `OpStore` has no result — so the
+    // pointee has to come from the value being stored, which means knowing what
+    // every ID in the module is typed as.
+    let result_types = collect_result_types(module);
+
     // Collected first, so that the pass can bail out without touching a module
     // that only uses the custom set for something else.
-    let mut loads: Vec<Vec<Vec<Option<Load>>>> = vec![];
+    let mut accesses: Vec<Vec<Vec<Option<Access>>>> = vec![];
     let mut any = false;
     for func in &module.functions {
         let mut per_block = vec![];
         for block in &func.blocks {
             let mut per_inst = vec![];
             for inst in &block.instructions {
-                let load = decode_load(module, custom_ext_inst_set, inst);
-                any |= load.is_some();
-                per_inst.push(load);
+                let access = decode_access(module, &result_types, custom_ext_inst_set, inst);
+                any |= access.is_some();
+                per_inst.push(access);
             }
             per_block.push(per_inst);
         }
-        loads.push(per_block);
+        accesses.push(per_block);
     }
     if !any {
         return;
@@ -90,17 +101,17 @@ pub fn expand_physical_storage_buffer_loads(module: &mut Module) {
     // The pointer types have to exist before the conversions that name them, and
     // `pointer_type_for` appends to `types_global_values`, so they are all
     // created up-front rather than while rewriting the bodies.
-    for per_block in &loads {
+    for per_block in &accesses {
         for per_inst in per_block {
-            for load in per_inst.iter().flatten() {
-                pointers.pointer_type_for(module, &mut ids, load.loaded_type);
+            for access in per_inst.iter().flatten() {
+                pointers.pointer_type_for(module, &mut ids, access.pointee_type);
                 let ptr_id = ids.alloc();
-                pointers.convert_ids.insert(load.result_id, ptr_id);
+                pointers.convert_ids.insert(access.result_id, ptr_id);
             }
         }
     }
 
-    for (func, per_block) in module.functions.iter_mut().zip(&loads) {
+    for (func, per_block) in module.functions.iter_mut().zip(&accesses) {
         for (block, per_inst) in func.blocks.iter_mut().zip(per_block) {
             rewrite_block(block, per_inst, &pointers);
         }
@@ -113,68 +124,144 @@ pub fn expand_physical_storage_buffer_loads(module: &mut Module) {
     module.header.as_mut().unwrap().bound = ids.next;
 }
 
-/// Decodes one instruction, if it is a physical load.
-fn decode_load(module: &Module, custom_ext_inst_set: Word, inst: &Instruction) -> Option<Load> {
-    if inst.class.opcode != Op::ExtInst
-        || inst.operands[0].unwrap_id_ref() != custom_ext_inst_set
-        || CustomOp::decode_from_ext_inst(inst) != CustomOp::PhysicalStorageBufferLoad
-    {
+/// What every ID that has a type is typed as.
+///
+/// Only a store needs this, but it is cheap next to the rest of the linker and
+/// building it unconditionally keeps the decode step uniform.
+fn collect_result_types(module: &Module) -> FxHashMap<Word, Word> {
+    let mut types = FxHashMap::default();
+    let mut record = |inst: &Instruction| {
+        if let (Some(result_id), Some(result_type)) = (inst.result_id, inst.result_type) {
+            types.insert(result_id, result_type);
+        }
+    };
+
+    for inst in &module.types_global_values {
+        record(inst);
+    }
+    for func in &module.functions {
+        if let Some(def) = &func.def {
+            record(def);
+        }
+        for param in &func.parameters {
+            record(param);
+        }
+        for block in &func.blocks {
+            for inst in &block.instructions {
+                record(inst);
+            }
+        }
+    }
+    types
+}
+
+/// Decodes one instruction, if it is a physical access.
+fn decode_access(
+    module: &Module,
+    result_types: &FxHashMap<Word, Word>,
+    custom_ext_inst_set: Word,
+    inst: &Instruction,
+) -> Option<Access> {
+    if inst.class.opcode != Op::ExtInst || inst.operands[0].unwrap_id_ref() != custom_ext_inst_set {
         return None;
     }
 
-    let CustomInst::PhysicalStorageBufferLoad { address, alignment } = CustomInst::decode(inst)
-    else {
-        unreachable!("just decoded as `PhysicalStorageBufferLoad`");
-    };
-
     // The alignment is a `u32` constant, because SPIR-T carries `OpExtInst`
     // operands as values - so it has to be read back out of the module here.
-    let alignment = constant_u32(module, alignment.unwrap_id_ref())
-        .expect("`PhysicalStorageBufferLoad`'s alignment operand must be a `u32` constant");
+    let decode_alignment = |alignment: &Operand| {
+        constant_u32(module, alignment.unwrap_id_ref())
+            .expect("a physical access's alignment operand must be a `u32` constant")
+    };
 
-    Some(Load {
-        result_id: inst.result_id.unwrap(),
-        loaded_type: inst.result_type.unwrap(),
-        address_id: address.unwrap_id_ref(),
-        alignment,
-    })
+    match CustomOp::decode_from_ext_inst(inst) {
+        CustomOp::PhysicalStorageBufferLoad => {
+            let CustomInst::PhysicalStorageBufferLoad { address, alignment } =
+                CustomInst::decode(inst)
+            else {
+                unreachable!("just decoded as `PhysicalStorageBufferLoad`");
+            };
+            Some(Access {
+                result_id: inst.result_id.unwrap(),
+                pointee_type: inst.result_type.unwrap(),
+                address_id: address.unwrap_id_ref(),
+                alignment: decode_alignment(&alignment),
+                value_id: None,
+            })
+        }
+        CustomOp::PhysicalStorageBufferStore => {
+            let CustomInst::PhysicalStorageBufferStore {
+                address,
+                alignment,
+                value,
+            } = CustomInst::decode(inst)
+            else {
+                unreachable!("just decoded as `PhysicalStorageBufferStore`");
+            };
+            let value_id = value.unwrap_id_ref();
+            Some(Access {
+                result_id: inst.result_id.unwrap(),
+                // The store's own result type is `OpTypeVoid`, so the pointee is
+                // whatever the value turned out to be.
+                pointee_type: *result_types
+                    .get(&value_id)
+                    .expect("a stored value must be an ID with a type"),
+                address_id: address.unwrap_id_ref(),
+                alignment: decode_alignment(&alignment),
+                value_id: Some(value_id),
+            })
+        }
+        _ => None,
+    }
 }
 
-/// Replaces the physical loads in one block, leaving everything else alone.
-fn rewrite_block(block: &mut Block, per_inst: &[Option<Load>], pointers: &Pointers) {
+/// Replaces the physical accesses in one block, leaving everything else alone.
+fn rewrite_block(block: &mut Block, per_inst: &[Option<Access>], pointers: &Pointers) {
     if per_inst.iter().all(Option::is_none) {
         return;
     }
 
     let instructions = std::mem::take(&mut block.instructions);
-    for (inst, load) in instructions.into_iter().zip(per_inst) {
-        let Some(load) = load else {
+    for (inst, access) in instructions.into_iter().zip(per_inst) {
+        let Some(access) = access else {
             block.instructions.push(inst);
             continue;
         };
 
-        // The conversion gets a fresh ID and the load keeps the original, so
-        // that uses of the loaded value need no rewriting.
-        let ptr_id = pointers.convert_ids[&load.result_id];
+        let ptr_id = pointers.convert_ids[&access.result_id];
         block.instructions.push(Instruction::new(
             Op::ConvertUToPtr,
-            Some(pointers.types[&load.loaded_type]),
+            Some(pointers.types[&access.pointee_type]),
             Some(ptr_id),
-            vec![Operand::IdRef(load.address_id)],
+            vec![Operand::IdRef(access.address_id)],
         ));
         // The `Aligned` operand is not optional: Vulkan requires one on every
         // access through a physical pointer, since the implementation has no
         // other way to know what the address is aligned to.
-        block.instructions.push(Instruction::new(
-            Op::Load,
-            Some(load.loaded_type),
-            Some(load.result_id),
-            vec![
-                Operand::IdRef(ptr_id),
-                Operand::MemoryAccess(MemoryAccess::ALIGNED),
-                Operand::LiteralBit32(load.alignment),
-            ],
-        ));
+        let aligned = [
+            Operand::MemoryAccess(MemoryAccess::ALIGNED),
+            Operand::LiteralBit32(access.alignment),
+        ];
+        match access.value_id {
+            // The load keeps the original result ID, so that uses of the loaded
+            // value need no rewriting.
+            None => block.instructions.push(Instruction::new(
+                Op::Load,
+                Some(access.pointee_type),
+                Some(access.result_id),
+                [Operand::IdRef(ptr_id)].into_iter().chain(aligned).collect(),
+            )),
+            // The store has no result at all; its `OpExtInst`'s ID simply goes
+            // away, which is safe because a store is never used as a value.
+            Some(value_id) => block.instructions.push(Instruction::new(
+                Op::Store,
+                None,
+                None,
+                [Operand::IdRef(ptr_id), Operand::IdRef(value_id)]
+                    .into_iter()
+                    .chain(aligned)
+                    .collect(),
+            )),
+        }
     }
 }
 
