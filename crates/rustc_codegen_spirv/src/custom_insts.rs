@@ -215,6 +215,25 @@ def_custom_insts! {
     // `heap` is a `u32` constant (see `DescriptorHeap`), not a literal, because
     // SPIR-T models `OpExtInst` operands as values.
     5 => DescriptorHeapLoad { heap, index },
+
+    // [Semantic] Loads a value out of memory named by a raw 64-bit device
+    // address (`SPV_KHR_physical_storage_buffer`), the result type being the
+    // type loaded.
+    //
+    // A custom instruction, rather than the `OpConvertUToPtr` + `OpLoad` pair it
+    // becomes, for a reason of the same shape as `DescriptorHeapLoad`'s: the
+    // point is that no `PhysicalStorageBuffer` pointer *type* exists during the
+    // SPIR-T round-trip. Everything from codegen to lifting assumes the
+    // `Logical` addressing model — `SpirvType::Pointer` has no storage class to
+    // vary, and `physical_size` returns `None` for pointers — so a physical
+    // pointer introduced early would have to be understood by all of it. Riding
+    // through as one opaque `OpExtInst` means only
+    // `linker::physical_storage_buffer` ever sees one.
+    //
+    // `alignment` is a `u32` constant, not a literal, because SPIR-T models
+    // `OpExtInst` operands as values. It becomes the `Aligned` memory operand,
+    // which Vulkan requires on every access through a physical pointer.
+    6 => PhysicalStorageBufferLoad { address, alignment },
 }
 
 /// Which descriptor heap a `CustomInst::DescriptorHeapLoad` reads from.
@@ -257,7 +276,9 @@ impl CustomOp {
             | CustomOp::PushInlinedCallFrame
             | CustomOp::PopInlinedCallFrame => true,
 
-            CustomOp::Abort | CustomOp::DescriptorHeapLoad => false,
+            CustomOp::Abort
+            | CustomOp::DescriptorHeapLoad
+            | CustomOp::PhysicalStorageBufferLoad => false,
         }
     }
 
@@ -270,7 +291,8 @@ impl CustomOp {
             | CustomOp::ClearDebugSrcLoc
             | CustomOp::PushInlinedCallFrame
             | CustomOp::PopInlinedCallFrame
-            | CustomOp::DescriptorHeapLoad => false,
+            | CustomOp::DescriptorHeapLoad
+            | CustomOp::PhysicalStorageBufferLoad => false,
 
             CustomOp::Abort => true,
         }

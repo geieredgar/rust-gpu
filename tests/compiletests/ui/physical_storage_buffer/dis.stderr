@@ -1,0 +1,35 @@
+          %1 = OpFunction %2 None %3
+          %4 = OpLabel
+               OpLine %5 19 12
+          %6 = OpLoad %7 %8
+               OpLine %9 147 17
+         %10 = OpConvertUToPtr %11 %6
+         %12 = OpLoad %13 %10 Aligned 4
+               OpLine %5 22 4
+               OpStore %14 %12
+               OpNoLine
+               OpReturn
+               OpFunctionEnd
+               OpCapability Shader
+               OpCapability Int64
+               OpCapability VulkanMemoryModel
+               OpCapability PhysicalStorageBufferAddresses
+               OpMemoryModel PhysicalStorageBuffer64 Vulkan
+               OpEntryPoint Fragment %1 "main" %address %output
+               OpExecutionMode %1 OriginUpperLeft
+          %4 = OpString "crates/spirv-std/src/physical_storage_buffer.rs"
+          %5 = OpString "$DIR/dis.rs"
+               OpName %address "address"
+               OpName %output "output"
+               OpDecorate %address Flat
+               OpDecorate %address Location 0
+               OpDecorate %output Location 0
+        %u64 = OpTypeInt 64 0
+%_ptr_Input_u64 = OpTypePointer Input %u64
+        %u32 = OpTypeInt 32 0
+%_ptr_Output_u32 = OpTypePointer Output %u32
+       %void = OpTypeVoid
+         %11 = OpTypeFunction %void
+    %address = OpVariable %_ptr_Input_u64 Input
+     %output = OpVariable %_ptr_Output_u32 Output
+%_ptr_PhysicalStorageBuffer_u32 = OpTypePointer PhysicalStorageBuffer %u32

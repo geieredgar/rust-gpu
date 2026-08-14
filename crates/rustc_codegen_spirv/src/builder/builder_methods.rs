@@ -3407,6 +3407,11 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
                 None
             }
         });
+        let physical_storage_buffer_load_intrinsic = instance_def_id.is_some_and(|def_id| {
+            self.physical_storage_buffer_load_intrinsics
+                .borrow()
+                .contains(&def_id)
+        });
         let is_panic_entry_point = instance_def_id
             .is_some_and(|def_id| self.panic_entry_points.borrow().contains(&def_id));
         let from_trait_impl =
@@ -3438,6 +3443,9 @@ impl<'a, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'tcx> {
         }
         if let Some(heap) = heap_load_intrinsic {
             return self.codegen_descriptor_heap_load_intrinsic(heap, result_type, args);
+        }
+        if physical_storage_buffer_load_intrinsic {
+            return self.codegen_physical_storage_buffer_load_intrinsic(result_type, args);
         }
         if buffer_store_intrinsic {
             self.codegen_buffer_store_intrinsic(fn_abi, args);

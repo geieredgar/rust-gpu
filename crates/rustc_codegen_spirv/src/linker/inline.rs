@@ -861,7 +861,9 @@ impl Inliner<'_, '_> {
                                         current_debug_src_loc_inst = callsite_debug_src_loc_inst;
                                     }
                                 }
-                                CustomOp::Abort | CustomOp::DescriptorHeapLoad => break,
+                                CustomOp::Abort
+                                | CustomOp::DescriptorHeapLoad
+                                | CustomOp::PhysicalStorageBufferLoad => break,
                             }
                         }
                         Op::Variable => {}
@@ -1109,7 +1111,9 @@ impl Inliner<'_, '_> {
                             inlined_frames_depth = inlined_frames_depth.saturating_sub(1);
                             continue;
                         }
-                        CustomOp::Abort | CustomOp::DescriptorHeapLoad => break,
+                        CustomOp::Abort
+                        | CustomOp::DescriptorHeapLoad
+                        | CustomOp::PhysicalStorageBufferLoad => break,
                     }
                 }
                 Op::Variable => continue,

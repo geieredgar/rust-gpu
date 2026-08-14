@@ -392,6 +392,10 @@ impl Symbols {
                 "sampler_heap_load_intrinsic",
                 SpirvAttribute::SamplerHeapLoadIntrinsic,
             ),
+            (
+                "physical_storage_buffer_load_intrinsic",
+                SpirvAttribute::PhysicalStorageBufferLoadIntrinsic,
+            ),
             ("buffer_load_intrinsic", SpirvAttribute::BufferLoadIntrinsic),
             (
                 "buffer_store_intrinsic",

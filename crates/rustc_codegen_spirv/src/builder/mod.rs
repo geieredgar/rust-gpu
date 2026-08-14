@@ -5,6 +5,7 @@ mod ext_inst;
 mod format_args_decompiler;
 mod intrinsics;
 pub mod libm_intrinsics;
+mod physical_storage_buffer;
 mod spirv_asm;
 
 pub use ext_inst::ExtInst;

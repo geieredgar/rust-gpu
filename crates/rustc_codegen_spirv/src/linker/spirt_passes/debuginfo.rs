@@ -131,7 +131,9 @@ impl Transformer for CustomDebuginfoToSpv<'_> {
                             insts_to_remove.push(inst);
                             continue;
                         }
-                        CustomInst::Abort { .. } | CustomInst::DescriptorHeapLoad { .. } => {
+                        CustomInst::Abort { .. }
+                        | CustomInst::DescriptorHeapLoad { .. }
+                        | CustomInst::PhysicalStorageBufferLoad { .. } => {
                             assert!(
                                 !custom_op.is_debuginfo(),
                                 "`CustomOp::{custom_op:?}` debuginfo not lowered"

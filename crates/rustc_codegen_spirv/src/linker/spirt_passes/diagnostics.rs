@@ -684,7 +684,9 @@ impl<'a> Visitor<'a> for DiagnosticReporter<'a> {
                                     _ => unreachable!(),
                                 }
                             }
-                            CustomInst::Abort { .. } | CustomInst::DescriptorHeapLoad { .. } => {}
+                            CustomInst::Abort { .. }
+                            | CustomInst::DescriptorHeapLoad { .. }
+                            | CustomInst::PhysicalStorageBufferLoad { .. } => {}
                         },
                     }
                 }
